@@ -1,0 +1,117 @@
+Product Specification – “VeilText”
+1. Mission and Scope
+VeilText is a privacy-first web and desktop application that converts AI-generated or AI-tinged writing into text that reads and “scans” like it was produced by a human author, while never altering the user’s visual formatting. All transformations are transparent and reversible, and the app surfaces a real-time “AI similarity” score so writers can iterate until the content is comfortably below common detection thresholds.
+
+2. Core User Stories
+Paste & Clean – I paste a paragraph from my LLM, immediately see how “AI-ish” it looks, watch the score drop as default rules fire, then copy the cleaned version with identical bold, italics, headings, lists, links and footnotes.
+
+Upload & Download – I drop a .docx file, tweak a couple of replacement rules, verify the gauge is green, and download the sanitised .docx to send to my journal editor.
+
+Custom Rule Tuning – I add my own “replace” rule that swaps the full-width Japanese comma for a regular one, push it to the top of the stack, and store the preset so every future document uses it automatically.
+
+3. Named Components
+AppShell – the React/TypeScript root that wires everything together.
+
+TextCanvas – a Slate.js-powered rich-text editor that holds both the Original Layer and the Clean Layer while preserving every span of styling and metadata.
+
+RuleSidebar – a draggable, collapsible panel listing active rules; supports toggling, re-ordering, creating and deleting rules.
+
+TransformationEngine – the pure-TypeScript pipeline that walks the Slate tree and applies rules sequentially.
+
+DetectorGauge – a horizontal bar that polls selected AI-detection models (default GPTZero and Sapling) and displays an aggregated human-likeness percentage with red / amber / green zones 
+GPTZero
+Sapling
+.
+
+ClipboardBridge – pushes both HTML and RTF payloads to the system clipboard so pasting into Word, Docs or email keeps styles intact.
+
+FileGateway – handles .docx/.rtf/.html/.md import and export using mammoth.js and turndown/showdown converters.
+
+PresetStore – persists rule sets locally (IndexedDB) and, when signed-in, synchronises them to the optional cloud through a FastAPI micro-service.
+
+CloudBatchAPI – an optional stateless endpoint that lets enterprises POST documents for bulk cleaning or CMS pipelines; mirrors the front-end rule interpreter.
+
+4. Functional Requirements
+VeilText must accept paste, drag-and-drop or file-open of rich-formatted documents up to 100 000 words.
+
+The TransformationEngine must fire on every keystroke or rule change and update both the Clean Layer and the DetectorGauge in <200 ms for texts under 10 k words.
+
+A user can define two rule types: Replace (find pattern, substitute) or Remove (delete pattern). Patterns may be plain strings or regular expressions.
+
+Default rules ship enabled on first launch; users may disable or rearrange them:
+
+Replace all dash variants U+2012–U+2015 and U+2212 with “-”.
+
+Replace smart single quotes U+2018/U+2019/U+201A/U+201B and prime marks U+2032–U+2035 with '.
+
+Replace smart double quotes U+201C–U+201F, double-prime U+2033/U+2036 and «» U+00AB/U+00BB with ".
+
+Replace ellipsis U+2026 with “...”.
+
+Replace bullets U+2022 and mid-dot U+00B7 with “*”.
+
+Remove invisibles: soft hyphen U+00AD, Mongolian vowel separator U+180E, zero-width spaces/joins U+200B–U+200F, bidi controls U+202A–U+202E, word-joiner & term­inal charset U+2060–U+206F, variation selectors U+FE00–U+FE0F, byte-order mark U+FEFF.
+
+Replace all Unicode space variants (NBSP, thin, hair, ideographic, etc. at U+00A0, U+1680, U+2000–U+200A, U+202F, U+205F, U+3000) with the ASCII space.
+
+Map full-width ASCII U+FF01–U+FF5E to their half-width forms by subtracting 0xFEE0.
+
+Optional keyboard-only filter that strips any code point outside 0x09/0x0A/0x0D/0x20–0x7E plus emoji.
+
+The DetectorGauge aggregates two signals: GPTZero’s document-level perplexity/burstiness score and Sapling’s AI probability score, converting both to a 0-100 % “looks human” metric and updating live. Latest GPTZero model 3.4b (May 2 2025) supports multilingual detection; Sapling detector supports ChatGPT, Claude, Gemini, Llama & Mistral families (release April 2025) 
+Notion
+Sapling
+.
+
+A prominent disclaimer must clarify that no detector can guarantee immunity and that the gauge reflects current public models.
+
+Copy, Download and Undo/Redo controls sit in an action bar below the Canvas.
+
+Accessibility: every control is keyboard reachable, ARIA labelled, high-contrast compliant.
+
+Internationalisation: full RTL rendering and bidirectional text support; UI strings modular for localisation.
+
+5. Non-functional Requirements
+Performance: Must remain interactive (<50 ms input latency) on a mid-range 2024 laptop for documents ≤30 k words; Web Worker offloads transform for larger payloads.
+
+Security & Privacy: All operations run client-side unless the user explicitly opts into cloud mode; HTTPS enforced; zero logs by default.
+
+Reliability: CloudBatchAPI SLA 99.9 % uptime and regional redundancy; front-end runs offline after first load (PWA).
+
+Observability: Optional, anonymised telemetry for rule usage and detector-gauge distributions—user opt-in only.
+
+6. Algorithms and Flow
+The Slate document tree is passed to TransformationEngine. It walks every text node, piping its string through the ordered rule array, replacing or deleting substrings. The algorithm is O(n × r) where n is characters and r is enabled rules.
+
+Upon completion, the cleaned plain string is concatenated and sent through debounced async calls to GPTZero and Sapling. Responses return probabilities; VeilText converts them to a single percentage via a weighted average (configurable, default equal weight).
+
+DetectorGauge animates from previous percentage to new one over 300 ms and changes colour thresholds (≥70 % green, 40-69 % amber, <40 % red).
+
+ClipboardBridge serialises the Clean Layer to HTML. The HTML is fed into an html-to-rtf converter and both formats are pushed via navigator.clipboard.write so destination apps pick whichever flavour they understand.
+
+FileGateway uses mammoth.js to read .docx into Slate JSON, applies Engine, generates a parallel Slate tree, and then re-assembles a .docx with an identical style map for download.
+
+7. Testing Strategy
+Unit tests for every built-in rule plus a golden-file diff harness that validates round-trip formatting on a corpus of Word templates.
+
+Integration tests in Cypress: paste sample → expect gauge drop → copy → paste into hidden Word automation → assert formatting equality via Office JS.
+
+Load tests run the Engine + Gauge loop on a 100 k-word novel to verify memory caps and ensure backend CPU budget for CloudBatchAPI.
+
+Security tests include clipboard hijack prevention, XSS scanning on imported HTML, and fuzzing of regex patterns supplied by users.
+
+8. Roadmap Highlights
+Q3 2025: Browser extension and Gmail/Google Docs in-context cleaning.
+
+Q4 2025: “Re-phrase” rule type that uses an on-device small language model to introduce human-like lexical randomness while guarding meaning.
+
+Early 2026: Enterprise console with rule-set governance, organisation-wide presets and AuditTrail watermark mode for compliance.
+
+9. Open Questions and Risks
+Docx change-tracking fidelity: initial release ignores Word revisions; later versions may need native change-set merging.
+
+Detection arms race: as detectors evolve, weights and thresholds will require periodic re-tuning; a monthly model-performance review process will mitigate drift.
+
+Ethical considerations: VeilText must balance user privacy with institutional integrity; Terms of Service will prohibit malicious or fraudulent use.
+
+VeilText, through the synergy of its RuleSidebar, TransformationEngine and real-time DetectorGauge, empowers writers to keep the flow and convenience of large-language-model drafting while confidently presenting text that reads—and tests—as unmistakably human.
