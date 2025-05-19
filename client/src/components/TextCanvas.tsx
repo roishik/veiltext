@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback } from "react";
 import { createEditor, Descendant, Editor, Transforms, Element as SlateElement } from "slate";
 import { Slate, Editable, withReact, RenderElementProps, RenderLeafProps } from "slate-react";
 import { withHistory } from "slate-history";
@@ -12,31 +12,31 @@ import { applyTransformations } from "@/lib/TransformationEngine";
 import { SlateCustomElement, SlateCustomText, ViewMode } from "@/lib/editor/slateTypes";
 import { withShortcuts, withLinks } from "@/lib/editor/slatePlugins";
 
-const initialValue: Descendant[] = [
-  {
-    type: 'paragraph',
-    children: [
-      { text: 'Paste your AI-generated content here or start typing...' },
-    ],
-  },
-];
-
 export default function TextCanvas() {
+  // Create our editors
   const [originalEditor] = useState(() => withLinks(withShortcuts(withHistory(withReact(createEditor())))));
   const [cleanedEditor] = useState(() => withLinks(withShortcuts(withHistory(withReact(createEditor())))));
   
-  const [originalValue, setOriginalValue] = useState<Descendant[]>(initialValue);
-  const [cleanedValue, setCleanedValue] = useState<Descendant[]>(initialValue);
+  // Local state
   const [viewMode, setViewMode] = useState<ViewMode>("split");
   const [wordCount, setWordCount] = useState(0);
   const [charCount, setCharCount] = useState(0);
   
-  const { activeRules } = useEditorContext();
+  // Get global state from context
+  const { 
+    activeRules, 
+    originalValue, 
+    cleanedValue, 
+    setOriginalValue, 
+    setCleanedValue 
+  } = useEditorContext();
+  
   const { toast } = useToast();
 
   // Transform the original content whenever it changes or rules change
   const transformContent = useCallback((value: Descendant[]) => {
     try {
+      // Apply transformation rules to the original value
       const transformedValue = applyTransformations(value, activeRules);
       setCleanedValue(transformedValue);
       
@@ -52,12 +52,12 @@ export default function TextCanvas() {
         variant: "destructive",
       });
     }
-  }, [activeRules, originalEditor, toast]);
+  }, [activeRules, originalEditor, setCleanedValue, toast]);
 
   const handleOriginalValueChange = useCallback((value: Descendant[]) => {
     setOriginalValue(value);
     transformContent(value);
-  }, [transformContent]);
+  }, [setOriginalValue, transformContent]);
 
   // Define custom rendering functions
   const renderElement = useCallback((props: RenderElementProps) => {
@@ -277,30 +277,6 @@ export default function TextCanvas() {
           >
             <i className="ri-list-ordered"></i>
           </Button>
-          <Button 
-            variant="ghost" 
-            size="sm"
-            className="p-1.5 hover:bg-gray-100 rounded text-gray-700" 
-            title="Decrease Indent"
-            onClick={() => toast({
-              title: "Decrease Indent",
-              description: "This feature will be available soon.",
-            })}
-          >
-            <i className="ri-indent-decrease"></i>
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="sm"
-            className="p-1.5 hover:bg-gray-100 rounded text-gray-700" 
-            title="Increase Indent"
-            onClick={() => toast({
-              title: "Increase Indent",
-              description: "This feature will be available soon.",
-            })}
-          >
-            <i className="ri-indent-increase"></i>
-          </Button>
           <span className="border-r border-gray-200 h-6 mx-1"></span>
           <Button 
             variant="ghost" 
@@ -313,31 +289,6 @@ export default function TextCanvas() {
             })}
           >
             <i className="ri-link"></i>
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="sm"
-            className="p-1.5 hover:bg-gray-100 rounded text-gray-700" 
-            title="Image"
-            onClick={() => toast({
-              title: "Insert Image",
-              description: "Image insertion will be available soon.",
-            })}
-          >
-            <i className="ri-image-line"></i>
-          </Button>
-          <span className="border-r border-gray-200 h-6 mx-1"></span>
-          <Button 
-            variant="ghost" 
-            size="sm"
-            className="p-1.5 hover:bg-gray-100 rounded text-gray-700" 
-            title="Clear Formatting"
-            onClick={() => toast({
-              title: "Clear Formatting",
-              description: "This feature will be available soon.",
-            })}
-          >
-            <i className="ri-format-clear"></i>
           </Button>
           
           {/* View toggle at the right */}
@@ -376,7 +327,7 @@ export default function TextCanvas() {
             <div className={`${viewMode === "split" ? "border-r border-gray-200" : ""} p-4 editor-content min-h-[200px]`}>
               <Slate
                 editor={originalEditor}
-                value={originalValue}
+                initialValue={originalValue}
                 onChange={handleOriginalValueChange}
               >
                 <Editable
@@ -395,7 +346,7 @@ export default function TextCanvas() {
             <div className={`${viewMode === "split" ? "bg-gray-50" : ""} p-4 editor-content min-h-[200px]`}>
               <Slate
                 editor={cleanedEditor}
-                value={cleanedValue}
+                initialValue={cleanedValue}
                 onChange={value => setCleanedValue(value)}
               >
                 <Editable
@@ -418,12 +369,13 @@ export default function TextCanvas() {
             <div className="text-sm">
               <span className="text-gray-500">Word count: </span>
               <span className="font-medium">{wordCount.toLocaleString()}</span>
-              <span className="mx-2 text-gray-300">|</span>
-              <span className="text-gray-500">Character count: </span>
+              <span className="text-gray-500 ml-4">Character count: </span>
               <span className="font-medium">{charCount.toLocaleString()}</span>
             </div>
             
-            <ClipboardBridge value={cleanedValue} />
+            <div className="flex items-center gap-2">
+              <ClipboardBridge value={cleanedValue} />
+            </div>
           </div>
         </div>
       </div>

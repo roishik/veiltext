@@ -191,7 +191,7 @@ export default function RuleSidebar({ collapsed, onToggleCollapse }: RuleSidebar
                     onChange={(e) => setNewRule({...newRule, pattern: e.target.value})}
                   />
                   <p className="text-xs text-gray-500">
-                    For Unicode: U+2013–U+2015 | For regex: /\p{Pd}/gu
+                    For Unicode: U+2013–U+2015 | For regex: /dash/g
                   </p>
                 </div>
                 {newRule.type === "replace" && (
