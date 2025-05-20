@@ -155,10 +155,10 @@ export default function DetectorGauge() {
         <span className="text-green-600">Human-Like</span>
       </div>
       
-      <Alert className="mt-2 text-xs text-gray-600 bg-yellow-50 border border-yellow-200">
-        <AlertDescription>
-          <i className="ri-information-line text-yellow-500 inline-block mr-1"></i>
-          Disclaimer: No detector is 100% accurate. Results may vary based on content type and model capabilities.
+      <Alert className="mt-2 text-xs text-white bg-purple-600 border border-purple-700 px-3 py-1">
+        <AlertDescription className="flex items-center whitespace-nowrap">
+          <i className="ri-information-line inline-block mr-1"></i>
+          Disclaimer: No detector is 100% accurate. Results may vary.
         </AlertDescription>
       </Alert>
     </div>

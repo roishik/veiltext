@@ -13,6 +13,16 @@ const transformTextNode = (node: any, ruleIds: string[]): any => {
   if (!text) {
     return node;
   }
+
+  // Simple direct replacements that always work
+  text = text.replace(/—/g, '-'); // em dash
+  text = text.replace(/–/g, '-'); // en dash
+  text = text.replace(/…/g, '...'); // ellipsis
+  text = text.replace(/"/g, '"'); // left double quote
+  text = text.replace(/"/g, '"'); // right double quote
+  text = text.replace(/'/g, "'"); // left single quote
+  text = text.replace(/'/g, "'"); // right single quote
+  text = text.replace(/•/g, '*'); // bullet
   
   // Apply each rule in order
   ruleIds.forEach(ruleId => {
@@ -124,21 +134,20 @@ const transformNode = (node: Descendant, ruleIds: string[]): Descendant => {
   }
   
   // For non-text nodes, recursively transform their children
-  const children = node.children.map(child => transformNode(child as Descendant, ruleIds));
-  
   return {
     ...node,
-    children
+    children: node.children?.map(child => transformNode(child as Descendant, ruleIds)) || []
   };
 };
 
 // Main transformation function that processes the entire Slate document
 export const applyTransformations = (nodes: Descendant[], ruleIds: string[]): Descendant[] => {
-  if (!nodes || nodes.length === 0 || !ruleIds || ruleIds.length === 0) {
+  if (!nodes || nodes.length === 0) {
     return nodes;
   }
   
-  return nodes.map(node => transformNode(node, ruleIds));
+  // Always apply basic transformations, even if no rules are specified
+  return nodes.map(node => transformNode(node, ruleIds || []));
 };
 
 // Extract plain text from Slate nodes
