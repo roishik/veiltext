@@ -46,16 +46,6 @@ export default function AppShell({ children }: AppShellProps) {
               <i className="ri-settings-4-line mr-1"></i>
               <span className="hidden md:inline">Settings</span>
             </button>
-            <button 
-              className="bg-primary-50 hover:bg-primary-100 text-primary-600 px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center"
-              onClick={() => toast({
-                title: "Sign In",
-                description: "Cloud sync feature coming soon! Stay tuned for updates.",
-              })}
-            >
-              <i className="ri-cloud-line mr-1.5"></i>
-              Sign In
-            </button>
           </div>
         </div>
       </header>

@@ -36,8 +36,14 @@ export default function TextCanvas() {
   // Transform the original content whenever it changes or rules change
   const transformContent = useCallback((value: Descendant[]) => {
     try {
+      // Add default rules if none are active
+      let rulesToApply = activeRules;
+      if (activeRules.length === 0) {
+        rulesToApply = ["rule-1", "rule-2", "rule-3", "rule-4"];
+      }
+      
       // Apply transformation rules to the original value
-      const transformedValue = applyTransformations(value, activeRules);
+      const transformedValue = applyTransformations(value, rulesToApply);
       setCleanedValue(transformedValue);
       
       // Count words and characters
