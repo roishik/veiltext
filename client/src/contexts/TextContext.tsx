@@ -21,7 +21,7 @@ const defaultTransformations: TextTransformation[] = [
   {
     id: 'smart-quotes',
     name: 'Smart Quotes',
-    pattern: "'",
+    pattern: "''",
     replacement: "'",
     enabled: true
   },
