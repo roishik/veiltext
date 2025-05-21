@@ -12,34 +12,39 @@ export default function DetectorGauge() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const { toast } = useToast();
 
-  // Simulate detection API call
+  // Deterministic detection score calculation
   const calculateDetectionScore = async (text: string) => {
     if (!text || text.trim() === "") return 0;
     
     setIsLoading(true);
     
     try {
-      // This would be a real API call to GPTZero and Sapling
-      // For now, we'll simulate a weighted average calculation
-      
-      // Simulated: Longer text with varied sentence structure tends to be more human-like
+      // Use a deterministic approach to calculate the score
       const wordCount = text.split(/\s+/).length;
       const sentenceCount = text.split(/[.!?]+/).length;
       const avgWordPerSentence = wordCount / Math.max(1, sentenceCount);
       
-      // Simulate perplexity (random baseline with text length influence)
-      const baseProbability = 0.4 + (Math.min(wordCount, 500) / 500) * 0.3;
+      // Calculate complexity score based on text statistics - fully deterministic
+      const uniqueWords = new Set(text.toLowerCase().split(/\s+/)).size;
+      const lexicalDiversity = uniqueWords / Math.max(1, wordCount);
       
-      // Add some randomization to simulate detector uncertainty
-      const randomFactor = Math.random() * 0.2;
+      // Character type ratios
+      const specialChars = (text.match(/[^a-zA-Z0-9\s]/g) || []).length;
+      const specialCharRatio = specialChars / Math.max(1, text.length);
       
-      // Simulate transformation rules impact - each applied rule increases human-likeness
-      const rulesAppliedFactor = Math.min(0.3, Math.random() * 0.3);
+      // Calculate baseline score using a deterministic formula
+      const lengthFactor = Math.min(1, wordCount / 300) * 30;
+      const diversityFactor = lexicalDiversity * 40;
+      const sentenceStructureFactor = Math.min(15, avgWordPerSentence) * 2;
+      const specialCharFactor = specialCharRatio * 15;
       
-      // Final score is a percentage of "human-likeness"
-      let score = Math.min(95, Math.max(30, (baseProbability + randomFactor + rulesAppliedFactor) * 100));
+      // Consistent scoring formula
+      let score = 40 + lengthFactor + diversityFactor + sentenceStructureFactor - specialCharFactor;
       
-      // If text is very short, reduce confidence
+      // Ensure within bounds
+      score = Math.min(95, Math.max(30, score));
+      
+      // If text is very short, reduce score
       if (wordCount < 50) {
         score = Math.max(40, score * 0.8);
       }

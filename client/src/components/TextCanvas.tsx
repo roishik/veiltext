@@ -36,13 +36,13 @@ export default function TextCanvas() {
   // Transform the original content whenever it changes or rules change
   const transformContent = useCallback((value: Descendant[]) => {
     try {
-      // Add default rules if none are active
+      // Always transform content immediately, using default rules if none are active
       let rulesToApply = activeRules;
       if (activeRules.length === 0) {
         rulesToApply = ["rule-1", "rule-2", "rule-3", "rule-4"];
       }
       
-      // Apply transformation rules to the original value
+      // Apply transformation rules to the original value right away
       const transformedValue = applyTransformations(value, rulesToApply);
       setCleanedValue(transformedValue);
       
@@ -339,8 +339,8 @@ export default function TextCanvas() {
                 <Editable
                   renderElement={renderElement}
                   renderLeaf={renderLeaf}
-                  placeholder="Enter or paste AI-generated text here..."
-                  className="min-h-[200px] focus:outline-none"
+                  placeholder="Paste your AI-generated content here or start typing..."
+                  className="min-h-[200px] focus:outline-none placeholder:text-gray-400 placeholder:opacity-50"
                   spellCheck
                 />
               </Slate>
