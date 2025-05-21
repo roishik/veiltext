@@ -1,12 +1,10 @@
-import { Switch, Route } from "wouter";
-import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { Route, Switch } from 'wouter';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import NotFound from "@/pages/not-found";
-import Home from "@/pages/Home";
-import { EditorProvider } from "@/contexts/EditorContext";
-import AppShell from "@/layouts/AppShell";
+import { ThemeProvider } from "@/components/ui/theme-provider";
+import { queryClient } from '@/lib/queryClient';
+import Home from '@/pages/Home';
+import NotFound from '@/pages/not-found';
 
 function Router() {
   return (
@@ -20,14 +18,12 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <EditorProvider>
-        <TooltipProvider>
-          <Toaster />
-          <AppShell>
-            <Router />
-          </AppShell>
-        </TooltipProvider>
-      </EditorProvider>
+      <ThemeProvider defaultTheme="light" storageKey="veiltext-theme">
+        <main className="min-h-screen">
+          <Router />
+        </main>
+        <Toaster />
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
