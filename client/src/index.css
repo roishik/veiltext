@@ -141,6 +141,23 @@
   min-height: 200px;
 }
 
+/* Properly hide placeholder when content exists */
+[data-slate-editor] {
+  position: relative;
+}
+
+[data-slate-editor]:not(:empty) [data-slate-placeholder] {
+  display: none !important;
+}
+
+[data-slate-placeholder] {
+  position: absolute;
+  pointer-events: none;
+  color: #9ca3af;
+  opacity: 0.6;
+  user-select: none;
+}
+
 /* Transition for collapsible sidebar */
 .transition-all {
   transition: all 0.3s ease;

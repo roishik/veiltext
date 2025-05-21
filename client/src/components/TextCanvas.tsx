@@ -60,10 +60,58 @@ export default function TextCanvas() {
     }
   }, [activeRules, originalEditor, setCleanedValue, toast]);
 
+  // Custom function to handle pasting content
+  const handlePaste = useCallback((event: React.ClipboardEvent) => {
+    try {
+      // Get pasted text content
+      const pastedText = event.clipboardData.getData('text');
+      if (!pastedText) return;
+      
+      // Create a simple Slate structure for the pasted content
+      const pastedValue: Descendant[] = [
+        { 
+          type: 'paragraph', 
+          children: [{ text: pastedText }] 
+        }
+      ];
+      
+      // Set to editor and immediately transform
+      setOriginalValue(pastedValue);
+      
+      // Process transformation with default rules if needed
+      const rulesToApply = activeRules.length > 0 ? activeRules : ["rule-1", "rule-2", "rule-3", "rule-4"];
+      const transformedValue = applyTransformations(pastedValue, rulesToApply);
+      setCleanedValue(transformedValue);
+      
+      // Update counts
+      setWordCount(pastedText.trim().split(/\s+/).filter(Boolean).length);
+      setCharCount(pastedText.length);
+      
+      // Prevent default paste behavior
+      event.preventDefault();
+    } catch (error) {
+      console.error("Error handling paste:", error);
+    }
+  }, [activeRules, setOriginalValue, setCleanedValue]);
+  
   const handleOriginalValueChange = useCallback((value: Descendant[]) => {
+    // Set original value
     setOriginalValue(value);
-    transformContent(value);
-  }, [setOriginalValue, transformContent]);
+    
+    // Run transformation immediately
+    try {
+      const rulesToApply = activeRules.length > 0 ? activeRules : ["rule-1", "rule-2", "rule-3", "rule-4"];
+      const transformedValue = applyTransformations(value, rulesToApply);
+      setCleanedValue(transformedValue);
+      
+      // Update word and character counts from Slate document
+      const plainText = value.map(n => Node.string(n)).join(' ');
+      setWordCount(plainText.trim().split(/\s+/).filter(Boolean).length);
+      setCharCount(plainText.length);
+    } catch (error) {
+      console.error("Error in transformation:", error);
+    }
+  }, [activeRules, setOriginalValue, setCleanedValue]);
 
   // Define custom rendering functions
   const renderElement = useCallback((props: RenderElementProps) => {
@@ -342,6 +390,7 @@ export default function TextCanvas() {
                   placeholder="Paste your AI-generated content here or start typing..."
                   className="min-h-[200px] focus:outline-none placeholder:text-gray-400 placeholder:opacity-50"
                   spellCheck
+                  onPaste={handlePaste}
                 />
               </Slate>
             </div>
