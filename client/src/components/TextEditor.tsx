@@ -161,8 +161,9 @@ export default function TextEditor() {
           <CardContent className="p-4">
             <div
               ref={editorRef}
-              contentEditable
+              contentEditable={true}
               className="min-h-[300px] w-full rounded-md bg-background focus:outline-none overflow-auto p-2"
+              data-placeholder="Paste your AI-generated content here..."
               onPaste={handlePaste}
               onInput={handleInput}
               style={{ 

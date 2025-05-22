@@ -66,17 +66,37 @@ export function TextProvider({ children }: { children: React.ReactNode }) {
   const [stats, setStats] = useState<TextStats>({ words: 0, characters: 0, humanLikenessScore: 0 });
 
   // Transform text whenever original text or active transformations change
-  const updateCleanedText = useCallback((text: string, activeIds: string[]) => {
-    // Apply all transformations to get cleaned text
-    let result = text;
+  // Preserves HTML formatting during transformation
+  const updateCleanedText = useCallback((html: string, activeIds: string[]) => {
+    // Apply all transformations to get cleaned text while preserving HTML tags
+    let result = html;
     
-    if (text.trim()) {
-      // Only apply transformations if there is text
-      result = transformText(text);
+    if (html.trim()) {
+      // Create a DOM parser to safely handle the HTML content
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
       
-      // Calculate stats
-      const { words, characters } = countTextStats(result);
-      const humanLikenessScore = calculateHumanLikenessScore(result);
+      // Function to process text nodes only, preserving HTML structure
+      const processTextNodes = (node: Node) => {
+        if (node.nodeType === Node.TEXT_NODE && node.textContent) {
+          // Only transform the text content
+          node.textContent = transformText(node.textContent);
+        } else if (node.hasChildNodes()) {
+          // Process children recursively
+          node.childNodes.forEach(processTextNodes);
+        }
+      };
+      
+      // Process all text nodes while keeping formatting
+      processTextNodes(doc.body);
+      
+      // Extract the transformed HTML
+      result = doc.body.innerHTML;
+      
+      // Calculate stats using a plain text version
+      const plainText = doc.body.textContent || '';
+      const { words, characters } = countTextStats(plainText);
+      const humanLikenessScore = calculateHumanLikenessScore(plainText);
       
       setStats({ words, characters, humanLikenessScore });
     } else {
