@@ -158,6 +158,15 @@
   user-select: none;
 }
 
+/* ContentEditable Placeholder */
+[contenteditable=true]:empty:before {
+  content: attr(data-placeholder);
+  color: #9ca3af;
+  font-style: italic;
+  pointer-events: none;
+  display: block;
+}
+
 /* Transition for collapsible sidebar */
 .transition-all {
   transition: all 0.3s ease;

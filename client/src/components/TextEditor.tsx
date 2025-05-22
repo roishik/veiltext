@@ -6,7 +6,6 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { ClipboardCopy, ArrowDown, Download } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Editor } from '@tinymce/tinymce-react';
 
 /**
  * Simple HumanLikeness gauge component
@@ -49,35 +48,50 @@ export default function TextEditor() {
   } = useTextContext();
 
   // Editor references
-  const editorRef = useRef<any>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
+  const outputRef = useRef<HTMLDivElement>(null);
   
   // Local state for copied status
   const [copied, setCopied] = useState(false);
-  
-  // TinyMCE editor configuration
-  const tinyConfig = {
-    menubar: false,
-    plugins: [
-      'advlist', 'autolink', 'lists', 'link', 'charmap',
-      'anchor', 'searchreplace', 'visualblocks', 'code',
-      'insertdatetime', 'table', 'wordcount'
-    ],
-    toolbar: 'undo redo | blocks | ' +
-      'bold italic forecolor | alignleft aligncenter ' +
-      'alignright alignjustify | bullist numlist outdent indent | ' +
-      'removeformat',
-    content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }',
-    height: 300,
-    placeholder: "Paste your AI-generated content here...",
-    // Important: allow paste events to preserve formatting
-    paste_data_images: true,
-    paste_retain_style_properties: 'all',
-    paste_word_valid_elements: '*[*]'
-  };
 
-  // Handle when editor content changes
-  const handleEditorChange = (content: string) => {
-    setOriginalText(content);
+  // Set initial content when component mounts
+  useEffect(() => {
+    if (editorRef.current && originalText) {
+      editorRef.current.innerHTML = originalText;
+    }
+  }, []);
+  
+  // Handle paste event to capture formatted content
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    
+    const clipboardData = e.clipboardData;
+    let content = '';
+    
+    // Try to get HTML content first to preserve formatting
+    const htmlContent = clipboardData.getData('text/html');
+    if (htmlContent) {
+      content = htmlContent;
+    } else {
+      // Fallback to plain text and convert newlines to <br>
+      const textContent = clipboardData.getData('text/plain');
+      content = textContent.replace(/\n/g, '<br>');
+    }
+    
+    // Insert at cursor position
+    document.execCommand('insertHTML', false, content);
+    
+    // Capture the updated content
+    if (editorRef.current) {
+      setOriginalText(editorRef.current.innerHTML);
+    }
+  };
+  
+  // Handle input to capture changes
+  const handleInput = () => {
+    if (editorRef.current) {
+      setOriginalText(editorRef.current.innerHTML);
+    }
   };
 
   // Reset copied status after 2 seconds
@@ -90,22 +104,18 @@ export default function TextEditor() {
 
   // Handle text copy with formatting
   const handleCopy = async () => {
-    if (cleanedText) {
+    if (cleanedText && outputRef.current) {
       try {
-        // Create a temporary div to hold formatted HTML content
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = cleanedText;
-        
-        // Try to copy as rich text if available in modern browsers
+        // Try to use the modern clipboard API with HTML support
         const clipboardItem = new ClipboardItem({
-          'text/html': new Blob([tempDiv.innerHTML], { type: 'text/html' }),
+          'text/html': new Blob([outputRef.current.innerHTML], { type: 'text/html' }),
           'text/plain': new Blob([cleanedText], { type: 'text/plain' })
         });
         
         await navigator.clipboard.write([clipboardItem]);
         setCopied(true);
       } catch (err) {
-        // Fallback to plain text for browsers that don't support ClipboardItem
+        // Fallback for browsers that don't support ClipboardItem
         await navigator.clipboard.writeText(cleanedText);
         setCopied(true);
       }
@@ -116,15 +126,18 @@ export default function TextEditor() {
   const handleDownload = () => {
     if (!cleanedText) return;
     
-    // Create HTML file with formatting
+    // Create HTML file with formatting preserved
     const htmlContent = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <title>VeilText Transformed Content</title>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.5; padding: 20px; }
+  </style>
 </head>
 <body>
-  ${cleanedText}
+  ${outputRef.current?.innerHTML || cleanedText}
 </body>
 </html>`;
     
@@ -145,12 +158,18 @@ export default function TextEditor() {
       <div className="space-y-2">
         <h2 className="text-xl font-bold">Original Text</h2>
         <Card className="border border-gray-200 dark:border-gray-800">
-          <CardContent className="p-0">
-            <Editor
-              onInit={(evt, editor) => editorRef.current = editor}
-              initialValue={originalText}
-              onEditorChange={handleEditorChange}
-              init={tinyConfig}
+          <CardContent className="p-4">
+            <div
+              ref={editorRef}
+              contentEditable
+              className="min-h-[300px] w-full rounded-md bg-background focus:outline-none overflow-auto p-2"
+              onPaste={handlePaste}
+              onInput={handleInput}
+              style={{ 
+                fontFamily: 'Arial, sans-serif',
+                fontSize: '14px',
+                lineHeight: '1.5'
+              }}
             />
           </CardContent>
         </Card>
@@ -198,7 +217,7 @@ export default function TextEditor() {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Download as text file</p>
+                  <p>Download as HTML file</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -206,21 +225,17 @@ export default function TextEditor() {
         </div>
 
         <Card className="border border-gray-200 dark:border-gray-800">
-          <CardContent className="p-0">
-            <div className="min-h-[300px] rounded-md bg-muted/40 p-4 whitespace-pre-wrap overflow-auto">
-              {cleanedText ? (
-                cleanedText.split('\n').map((line, i) => (
-                  <React.Fragment key={i}>
-                    {line}
-                    {i < cleanedText.split('\n').length - 1 && <br />}
-                  </React.Fragment>
-                ))
-              ) : (
-                <div className="text-muted-foreground italic">
-                  Transformed text will appear here
-                </div>
-              )}
-            </div>
+          <CardContent className="p-4">
+            <div 
+              ref={outputRef}
+              className="min-h-[300px] rounded-md bg-muted/40 p-2 overflow-auto whitespace-pre-wrap"
+              dangerouslySetInnerHTML={{ __html: cleanedText }}
+              style={{ 
+                fontFamily: 'Arial, sans-serif',
+                fontSize: '14px',
+                lineHeight: '1.5'
+              }}
+            />
           </CardContent>
         </Card>
 
