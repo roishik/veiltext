@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTextContext } from '@/contexts/TextContext';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { ClipboardCopy, ArrowDown, Download } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Editor } from '@tinymce/tinymce-react';
 
 /**
  * Simple HumanLikeness gauge component
@@ -48,8 +48,37 @@ export default function TextEditor() {
     setOriginalText
   } = useTextContext();
 
+  // Editor references
+  const editorRef = useRef<any>(null);
+  
   // Local state for copied status
   const [copied, setCopied] = useState(false);
+  
+  // TinyMCE editor configuration
+  const tinyConfig = {
+    menubar: false,
+    plugins: [
+      'advlist', 'autolink', 'lists', 'link', 'charmap',
+      'anchor', 'searchreplace', 'visualblocks', 'code',
+      'insertdatetime', 'table', 'wordcount'
+    ],
+    toolbar: 'undo redo | blocks | ' +
+      'bold italic forecolor | alignleft aligncenter ' +
+      'alignright alignjustify | bullist numlist outdent indent | ' +
+      'removeformat',
+    content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }',
+    height: 300,
+    placeholder: "Paste your AI-generated content here...",
+    // Important: allow paste events to preserve formatting
+    paste_data_images: true,
+    paste_retain_style_properties: 'all',
+    paste_word_valid_elements: '*[*]'
+  };
+
+  // Handle when editor content changes
+  const handleEditorChange = (content: string) => {
+    setOriginalText(content);
+  };
 
   // Reset copied status after 2 seconds
   useEffect(() => {
@@ -59,23 +88,51 @@ export default function TextEditor() {
     }
   }, [copied]);
 
-  // Handle text copy
+  // Handle text copy with formatting
   const handleCopy = async () => {
     if (cleanedText) {
-      await navigator.clipboard.writeText(cleanedText);
-      setCopied(true);
+      try {
+        // Create a temporary div to hold formatted HTML content
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = cleanedText;
+        
+        // Try to copy as rich text if available in modern browsers
+        const clipboardItem = new ClipboardItem({
+          'text/html': new Blob([tempDiv.innerHTML], { type: 'text/html' }),
+          'text/plain': new Blob([cleanedText], { type: 'text/plain' })
+        });
+        
+        await navigator.clipboard.write([clipboardItem]);
+        setCopied(true);
+      } catch (err) {
+        // Fallback to plain text for browsers that don't support ClipboardItem
+        await navigator.clipboard.writeText(cleanedText);
+        setCopied(true);
+      }
     }
   };
 
-  // Handle text download
+  // Handle text download with formatting
   const handleDownload = () => {
     if (!cleanedText) return;
     
-    const blob = new Blob([cleanedText], { type: 'text/plain' });
+    // Create HTML file with formatting
+    const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>VeilText Transformed Content</title>
+</head>
+<body>
+  ${cleanedText}
+</body>
+</html>`;
+    
+    const blob = new Blob([htmlContent], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'veiltext-transformed.txt';
+    a.download = 'veiltext-transformed.html';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -89,11 +146,11 @@ export default function TextEditor() {
         <h2 className="text-xl font-bold">Original Text</h2>
         <Card className="border border-gray-200 dark:border-gray-800">
           <CardContent className="p-0">
-            <Textarea 
-              placeholder="Paste your AI-generated content here..."
-              className="min-h-[300px] rounded-md border-0 resize-none focus-visible:ring-0" 
-              value={originalText}
-              onChange={(e) => setOriginalText(e.target.value)}
+            <Editor
+              onInit={(evt, editor) => editorRef.current = editor}
+              initialValue={originalText}
+              onEditorChange={handleEditorChange}
+              init={tinyConfig}
             />
           </CardContent>
         </Card>
@@ -150,8 +207,15 @@ export default function TextEditor() {
 
         <Card className="border border-gray-200 dark:border-gray-800">
           <CardContent className="p-0">
-            <div className="min-h-[300px] rounded-md bg-muted/40 p-4 whitespace-pre-wrap">
-              {cleanedText || (
+            <div className="min-h-[300px] rounded-md bg-muted/40 p-4 whitespace-pre-wrap overflow-auto">
+              {cleanedText ? (
+                cleanedText.split('\n').map((line, i) => (
+                  <React.Fragment key={i}>
+                    {line}
+                    {i < cleanedText.split('\n').length - 1 && <br />}
+                  </React.Fragment>
+                ))
+              ) : (
                 <div className="text-muted-foreground italic">
                   Transformed text will appear here
                 </div>

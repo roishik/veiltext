@@ -2,6 +2,7 @@
 
 /**
  * Transforms text to make it more human-like by replacing common AI patterns
+ * Carefully preserves line breaks and formatting
  */
 export function transformText(text: string): string {
   if (!text) return '';
@@ -18,13 +19,21 @@ export function transformText(text: string): string {
     { from: '•', to: '*' }      // bullet
   ];
   
-  // Apply all replacements to the text
-  let result = text;
-  for (const { from, to } of replacements) {
-    result = result.replace(new RegExp(from, 'g'), to);
-  }
+  // Process text while preserving line breaks
+  // Split by line breaks, transform each line, then rejoin
+  const lines = text.split(/\r?\n/);
+  const transformedLines = lines.map(line => {
+    let result = line;
+    for (const { from, to } of replacements) {
+      // Safely escape special regex characters in the 'from' string
+      const escapedFrom = from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      result = result.replace(new RegExp(escapedFrom, 'g'), to);
+    }
+    return result;
+  });
   
-  return result;
+  // Rejoin with the original line breaks
+  return transformedLines.join('\n');
 }
 
 /**
